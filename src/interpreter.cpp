@@ -1620,9 +1620,12 @@ private:
             return out;
         };
 
+        BlockSignature function_signature;
+        function_signature.results = function.signature.results;
+
         ControlFrame function_frame;
         function_frame.kind = FrameKind::Function;
-        function_frame.signature.results = function.signature.results;
+        function_frame.signature = function_signature;
         function_frame.stack_height = 0;
         function_frame.start_pc = 0;
         function_frame.end_pc = code.body.size() > 0 ? code.body.size() - 1 : 0;
@@ -1735,7 +1738,7 @@ private:
                 auto depth = reader.read_varuint32();
                 if (branch(depth, reader, stack, control_stack))
                 {
-                    auto results = pop_results(stack, control_stack[0].signature);
+                    auto results = pop_results(stack, function_signature);
                     return extract_values(results);
                 }
                 break;
@@ -1748,7 +1751,7 @@ private:
                 {
                     if (branch(depth, reader, stack, control_stack))
                     {
-                        auto results = pop_results(stack, control_stack[0].signature);
+                        auto results = pop_results(stack, function_signature);
                         return extract_values(results);
                     }
                 }
@@ -1765,7 +1768,7 @@ private:
                 }
                 if (branch(target, reader, stack, control_stack))
                 {
-                    auto results = pop_results(stack, control_stack[0].signature);
+                    auto results = pop_results(stack, function_signature);
                     return extract_values(results);
                 }
                 break;
@@ -1775,7 +1778,7 @@ private:
                 uint32_t depth = static_cast<uint32_t>(control_stack.size() - 1);
                 if (branch(depth, reader, stack, control_stack))
                 {
-                    auto results = pop_results(stack, control_stack[0].signature);
+                    auto results = pop_results(stack, function_signature);
                     return extract_values(results);
                 }
                 break;

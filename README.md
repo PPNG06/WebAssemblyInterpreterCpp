@@ -46,7 +46,7 @@ Examples are built by default; disable them with
 
 ```powershell
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-cmake --build build --config Release --target run_wat_module
+cmake --build build --config Release --target run_wat_module wasm_interp_tests
 ctest --test-dir build -C Release
 ```
 
@@ -62,7 +62,7 @@ Use the staged harness for exhaustive coverage:
 
 ```bash
 cmake --build build --target wasm_interp_tests
-ctest --test-dir build                     # or add -C Release for MSVC
+ctest --test-dir build                     # or add -C Debug|Release for MSVC
 ```
 
 Individual cases can be invoked directly:
@@ -112,10 +112,10 @@ configuration directory on MSVC).
 3. Execute the runner:
    ```bash
    ./build/run_wat_module path/to/module.wasm            # single-config generators
-   .\build\Release\run_wat_module.exe path\to\module.wasm # Visual Studio / MSVC
+   .\build\Release\run_wat_module.exe path\to\module.wasm # Visual Studio / MSVC (adjust Debug|Release)
    ```
 
-In `/projects` you can find some `.wat` files (and their `.c` equivalent if any) which this interpreter supports. From C files, the `.wat` files have been generated with `wasm2wat` tool from `wabt` after being compiled to `.wasm` with emscripten.
+In `/projects` you can find some `.wat` files (and their `.c` equivalent if any) which this interpreter supports. If from C files, the `.wat` files have been generated with `wasm2wat` tool from `wabt` after being compiled to `.wasm` with emscripten.
 
 ## Embedding the Interpreter
 
