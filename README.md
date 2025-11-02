@@ -6,8 +6,8 @@ built alongside the interpreter—no external toolchain setup is required.
 
 - WebAssembly binary loader with full MVP section parsing.
 - Stack-based bytecode interpreter supporting multi-value returns, reference
-  types, bulk memory operators, and a growing WASI Preview 1 shim layer
-  (stdio, args/env, clocks, random, read-only file I/O).
+  types, bulk memory operators, and an expanding WASI Preview 1 shim layer
+  (stdio, args/env, clocks, randomness, read-only filesystem access).
 - Test harness that assembles the staged `.wat` suites into `.wasm` and validates
   observable linear memory results.
 
@@ -106,11 +106,14 @@ if (result.trapped) {
 }
 ```
 
-Use the `register_host_*` family to preload host functionality:
+Use the `register_host_*` family to preload host functionality before calling
+`load`:
 - `register_host_function` exposes callbacks, alongside the builtin
-  `wasi_snapshot_preview1` shims for stdio/exit/argv/env clocks.
+  `wasi_snapshot_preview1` shims for stdio/exit/argv/env, clocks, and random
+  number generation.
 - `register_host_memory`, `register_host_table`, and `register_host_global`
-  allow supplying imported resources before loading a module.
+  supply imported resources so modules with external memories/tables/globals
+  instantiate successfully.
 
 ## Repository Layout
 

@@ -142,6 +142,7 @@ set(WASM_INTERP_MODULES
     06_test_fc
     07_test_bulk_memory
     08_test_post_mvp
+    custom_imports
 )
 
     set(WASM_INTERP_TEST_CASES

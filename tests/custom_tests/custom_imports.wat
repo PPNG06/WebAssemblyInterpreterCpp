@@ -16,6 +16,7 @@
     (local.set $loaded (i32.load (i32.const 4)))
     (local.set $sum (global.get 0))
     (local.set $sum (i32.add (local.get $sum) (local.get $loaded)))
+    (table.set (i32.const 0) (ref.func $bridge))
     (local.set $sum
       (call_indirect (type 0)
         (local.get $sum)
@@ -35,4 +36,6 @@
 
   (func (export "store_global")
     (i32.store (i32.const 8) (global.get 0)))
+
+  (elem declare func $bridge)
 )

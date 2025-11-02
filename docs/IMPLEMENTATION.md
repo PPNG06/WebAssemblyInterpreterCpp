@@ -26,7 +26,8 @@ features are added.
 - **Testing harness** – `tests/cpp/test_main.cpp` assembles the staged `.wat`
   fixtures to `.wasm` during the build (via the `generate_wasm` target) and runs
   each exported scenario, checking observable
-  state via linear memory.
+  state via linear memory. Extra samples live under `tests/custom_tests/` for
+  integration coverage such as imported memories/tables/globals.
 
 ## Implemented Feature Set
 

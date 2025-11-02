@@ -271,7 +271,7 @@ const std::vector<ModuleInfo> kModules = {
          table_type.element_type = wasm::RefType::FuncRef;
          table_type.limits.min = 1;
          table_type.limits.max = 1;
-         interpreter.register_host_table("env", "table", table_type, {wasm::Value::make_funcref(0)});
+         interpreter.register_host_table("env", "table", table_type, {});
 
          wasm::GlobalType global_type;
          global_type.value_type = wasm::ValueType::I32;
