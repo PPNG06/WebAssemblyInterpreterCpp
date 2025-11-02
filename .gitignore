@@ -1,0 +1,46 @@
+# CMake build trees
+/build/
+/build-*/
+/out/
+/CMakeCache.txt
+/CMakeFiles/
+
+# Visual Studio / MSVC
+*.sln
+*.vcxproj*
+*.vcproj*
+*.user
+*.opensdf
+*.sdf
+*.vc.db
+*.VC.*
+*.code-workspace
+.ipch/
+*.pdb
+*.ilk
+*.obj
+*.log
+*.tlog
+*.lastbuildstate
+
+# IDE metadata
+/.vscode/
+/.vs/
+.idea/
+
+# Generated artifacts
+/**/*.wasm
+/**/*.wat.d
+/**/*.tmp
+
+# Python cache
+__pycache__/
+*.pyc
+
+# macOS / Linux junk
+.DS_Store
+*.swp
+*~
+
+# Node leftovers (unused)
+package-lock.json

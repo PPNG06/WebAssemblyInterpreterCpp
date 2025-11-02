@@ -1,0 +1,119 @@
+# WasmInterpCpp
+
+A self-contained WebAssembly (MVP + selected post-MVP features) interpreter
+written in C++20. The project bundles a lean slice of WABT so `wat2wasm` can be
+built alongside the interpreter—no external toolchain setup is required.
+
+- WebAssembly binary loader with full MVP section parsing.
+- Stack-based bytecode interpreter supporting multi-value returns, reference
+  types, bulk memory operators, and WASI Preview 1 shims for `fd_write`/`proc_exit`.
+- Test harness that assembles the staged `.wat` suites into `.wasm` and validates
+  observable linear memory results.
+
+## Requirements
+
+- CMake ≥ 3.20
+- A C++20-capable compiler (tested with GCC 13, Clang 16, MSVC 19.36+)
+- Python 3 (already required by the WABT build scripts)
+
+Optional: pass `-DWAT2WASM_EXECUTABLE=/path/to/wat2wasm` if you prefer an
+external assembler, or disable the bundled copy with
+`-DWASM_INTERP_USE_BUNDLED_WABT=OFF`.
+
+## Building
+
+```bash
+cmake -S . -B build
+cmake --build build
+```
+
+The configure step detects the lean WABT checkout under `wabt/` and wires
+`wat2wasm` into the build graph. Multi-config generators (Visual Studio, Xcode)
+require the usual `--config Debug|Release` flag on the second command.
+
+### Regenerating Test Fixtures
+
+All `.wat` files under `tests/wat/` are assembled into binaries inside
+`build/generated_wasm/` via a convenience target:
+
+```bash
+cmake --build build --target generate_wasm
+```
+
+Only changed fixtures are reassembled. To build just the assembler:
+
+```bash
+cmake --build build --target wat2wasm
+```
+
+The executable ends up in `build/wabt/` on single-config generators (append the
+configuration directory on MSVC).
+
+## Testing
+
+Use the staged harness for exhaustive coverage:
+
+```bash
+cmake --build build --target wasm_interp_tests
+ctest --test-dir build                     # or add --config Debug for MSVC
+```
+
+Individual cases can be invoked directly:
+
+```bash
+./build/wasm_interp_tests --list                       # enumerate suite entries
+./build/wasm_interp_tests 05_test_complex              # run an entire group
+./build/wasm_interp_tests 05_test_complex multi_call   # single export
+```
+
+CTest mirrors the same structure, so you can run `ctest -N` to inspect target
+labels.
+
+## Running a `.wat` Module
+
+1. Build `wat2wasm` (if not already done) and assemble your module:
+   ```bash
+   cmake --build build --target wat2wasm
+   build/wabt/wat2wasm path/to/module.wat -o path/to/module.wasm
+   ```
+2. Compile the example runner:
+   ```bash
+   g++ -std=c++20 -Iinclude examples/run_wat_module.cpp build/libwasm_interp.a -o build/run_wat_module
+   ```
+   Replace `build/libwasm_interp.a` with `build/Debug/wasm_interp.lib` on MSVC.
+3. Execute the runner:
+   ```bash
+   ./build/run_wat_module path/to/module.wasm
+   ```
+
+The example invokes the exported `_start` function; modify the source
+to call other symbols.
+
+## Embedding the Interpreter
+
+Link against the static library and drive the public API:
+
+```cpp
+#include "wasm/interpreter.hpp"
+
+std::vector<uint8_t> bytes = wasm::read_file("module.wasm");
+wasm::Interpreter interp;
+interp.load(bytes);
+auto result = interp.invoke("_start");
+if (result.trapped) {
+    // handle trap
+}
+```
+
+Use `register_host_function` to expose host callbacks; the interpreter ships
+with `wasi_snapshot_preview1.fd_write` and `.proc_exit` pre-registered.
+
+## Repository Layout
+
+- `src/` – interpreter and module loader implementation.
+- `include/` – public API headers and POD module definitions.
+- `tests/` – staged `.wat` fixtures and C++ harness.
+- `examples/` – minimal runner showing how to execute a compiled module.
+- `wabt/` – trimmed WABT subset providing `wat2wasm`.
+
+For deeper implementation details, consult `docs/IMPLEMENTATION.md`.
