@@ -11,13 +11,18 @@ built alongside the interpreter—no external toolchain setup is required.
 - Test harness that assembles the staged `.wat` suites into `.wasm` and validates
   observable linear memory results.
 
-This project was made on a Linux environment. While it should be supported on Windows, the instructions in this file (as well as the pathnames) might need closer examination.
+The tree now contains Windows-friendly build targets and has been validated with
+Visual Studio 2022/MSVC; follow the Windows quick start below when building on
+that platform.
 
 ## Requirements
 
 - CMake ≥ 3.20
 - A C++20-capable compiler (tested with GCC 13, Clang 16, MSVC 19.36+)
 - Python 3 (already required by the WABT build scripts)
+- On Windows install the Visual Studio 2022 C++ workload (or Build Tools) and run
+  commands from an *x64 Native Tools* developer prompt so MSVC and CMake share
+  the same environment.
 
 Optional: pass `-DWAT2WASM_EXECUTABLE=/path/to/wat2wasm` if you prefer an
 external assembler, or disable the bundled copy with
@@ -34,17 +39,21 @@ The configure step detects the lean WABT checkout under `wabt/` and wires
 `wat2wasm` into the build graph. Multi-config generators (Visual Studio, Xcode)
 require the usual `--config Debug|Release` flag on the second command.
 
+Examples are built by default; disable them with
+`-DWASM_INTERP_BUILD_EXAMPLES=OFF` if you only need the library/tests.
+
 ### Windows (MSVC) Quick Start
 
 ```powershell
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-cmake --build build --config Release
+cmake --build build --config Release --target run_wat_module
 ctest --test-dir build -C Release
 ```
 
 The bundled `wat2wasm.exe` ends up under `build/wabt/Release/` (swap in your
-chosen configuration). Tests can also be driven from the Visual Studio Test
-Explorer; both approaches exercise the same CTest entries.
+chosen configuration) and the example runner lives at
+`build/Release/run_wat_module.exe`. Tests can also be driven from the Visual
+Studio Test Explorer; both approaches exercise the same CTest entries.
 
 
 ## Testing
@@ -94,14 +103,16 @@ configuration directory on MSVC).
    ```
     (For Windows the path to wat2wasm should be `build/wabt/Release/wat2wasm.exe` (or with `Debug`))
 
-2. Compile the example runner:
+2. Build the example runner via CMake (already part of the default build when
+   `WASM_INTERP_BUILD_EXAMPLES=ON`):
    ```bash
-   g++ -std=c++20 -Iinclude examples/run_wat_module.cpp build/libwasm_interp.a -o build/run_wat_module
+   cmake --build build --target run_wat_module
+   # Visual Studio generators: add --config Release (or Debug)
    ```
-   On windows, link to `build/Release/wasm_interp.lib` (or `Debug`) on MSVC.
 3. Execute the runner:
    ```bash
-   ./build/run_wat_module path/to/module.wasm
+   ./build/run_wat_module path/to/module.wasm            # single-config generators
+   .\build\Release\run_wat_module.exe path\to\module.wasm # Visual Studio / MSVC
    ```
 
 The example invokes the exported `_start` function; modify the source

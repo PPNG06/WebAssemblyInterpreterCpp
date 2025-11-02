@@ -1525,7 +1525,7 @@ int main(int argc, char** argv)
     {
         const auto options = parse_options(argc, argv);
         const auto absolute_path = std::filesystem::absolute(options.module_path);
-        const auto wasm_bytes = wasm::read_file(absolute_path.string());
+        const auto wasm_bytes = wasm::read_file(absolute_path);
         const auto module = wasm::parse_module(wasm_bytes);
         ModuleIntrospector introspector(module);
 

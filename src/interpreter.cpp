@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstring>
 #include <fstream>
+#include <filesystem>
 #include <iostream>
 #include <new>
 #include <limits>
@@ -3652,12 +3653,13 @@ void Interpreter::register_host_global(const std::string& module,
     impl_->register_host_global(module, name, type, std::move(value));
 }
 
-std::vector<uint8_t> read_file(const std::string& path)
+std::vector<uint8_t> read_file(const std::filesystem::path& path)
 {
     std::ifstream file(path, std::ios::binary);
     if (!file)
     {
-        throw std::runtime_error("Failed to open file: " + path);
+        const auto path_u8 = path.u8string();
+        throw std::runtime_error("Failed to open file: " + std::string(path_u8.begin(), path_u8.end()));
     }
     file.seekg(0, std::ios::end);
     const auto size = static_cast<size_t>(file.tellg());
@@ -3665,6 +3667,11 @@ std::vector<uint8_t> read_file(const std::string& path)
     std::vector<uint8_t> buffer(size);
     file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(size));
     return buffer;
+}
+
+std::vector<uint8_t> read_file(const std::string& path)
+{
+    return read_file(std::filesystem::path(path));
 }
 
 } // namespace wasm

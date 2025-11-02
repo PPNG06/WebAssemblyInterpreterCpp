@@ -4,6 +4,7 @@
 #include <bit>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <optional>
@@ -415,7 +416,7 @@ RunSummary run_module_tests(const ModuleInfo& module, const std::optional<std::s
         std::cout << "Running module " << module.name << "..." << std::endl;
     }
 
-    const std::string wasm_path = std::string(WASM_INTERP_BINARY_DIR) + "/generated_wasm/" + module.wasm;
+    const auto wasm_path = std::filesystem::path(WASM_INTERP_BINARY_DIR) / "generated_wasm" / module.wasm;
     auto wasm_bytes = wasm::read_file(wasm_path);
 
     if (module.sequential)

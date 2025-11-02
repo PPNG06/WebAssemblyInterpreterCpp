@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(WASM_INTERP_ENABLE_TESTS "Build the interpreter test suite" ON)
 option(WASM_INTERP_USE_BUNDLED_WABT "Build the vendored WABT to obtain wat2wasm" ON)
+option(WASM_INTERP_BUILD_EXAMPLES "Build the example utilities" ON)
 
 set(WAT2WASM_EXECUTABLE "" CACHE FILEPATH "Path to an existing wat2wasm executable")
 
@@ -27,6 +28,18 @@ if(MSVC)
     target_compile_options(wasm_interp PRIVATE /W4 /permissive- /Zc:preprocessor /EHsc)
 else()
     target_compile_options(wasm_interp PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+if(WASM_INTERP_BUILD_EXAMPLES)
+    add_executable(run_wat_module
+        examples/run_wat_module.cpp
+    )
+    target_link_libraries(run_wat_module PRIVATE wasm_interp)
+    if(MSVC)
+        target_compile_options(run_wat_module PRIVATE /W4 /permissive- /Zc:preprocessor /EHsc)
+    else()
+        target_compile_options(run_wat_module PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
 endif()
 
 set(WAT_SOURCES

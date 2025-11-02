@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <span>
@@ -78,6 +79,7 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
+std::vector<uint8_t> read_file(const std::filesystem::path& path);
 std::vector<uint8_t> read_file(const std::string& path);
 
 } // namespace wasm
