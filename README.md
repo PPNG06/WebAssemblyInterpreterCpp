@@ -46,23 +46,6 @@ The bundled `wat2wasm.exe` ends up under `build/wabt/Release/` (swap in your
 chosen configuration). Tests can also be driven from the Visual Studio Test
 Explorer; both approaches exercise the same CTest entries.
 
-### Regenerating Test Fixtures
-
-All `.wat` files under `tests/wat/` are assembled into binaries inside
-`build/generated_wasm/` via a convenience target:
-
-```bash
-cmake --build build --target generate_wasm
-```
-
-Only changed fixtures are reassembled. To build just the assembler:
-
-```bash
-cmake --build build --target wat2wasm
-```
-
-The executable ends up in `build/wabt/` on single-config generators (append the
-configuration directory on MSVC).
 
 ## Testing
 
@@ -84,6 +67,24 @@ Individual cases can be invoked directly:
 CTest mirrors the same structure, so you can run `ctest -N` to inspect target
 labels.
 
+### Regenerating Test Fixtures
+
+All `.wat` files under `tests/wat/` are assembled into binaries inside
+`build/generated_wasm/` via a convenience target:
+
+```bash
+cmake --build build --target generate_wasm
+```
+
+Only changed fixtures are reassembled. To build just the assembler:
+
+```bash
+cmake --build build --target wat2wasm
+```
+
+The executable ends up in `build/wabt/` on single-config generators (append the
+configuration directory on MSVC).
+
 ## Running a `.wat` (or its `.wasm`) Module
 
 1. Build `wat2wasm` (if not already done) and assemble your module:
@@ -91,13 +92,13 @@ labels.
    cmake --build build --target wat2wasm
    build/wabt/wat2wasm path/to/module.wat -o path/to/module.wasm
    ```
-    (For Windows the path to wat2wasm should be build/wabt/Release/wat2wasm.exe)
+    (For Windows the path to wat2wasm should be `build/wabt/Release/wat2wasm.exe` (or with `Debug`))
 
 2. Compile the example runner:
    ```bash
    g++ -std=c++20 -Iinclude examples/run_wat_module.cpp build/libwasm_interp.a -o build/run_wat_module
    ```
-   Replace `build/libwasm_interp.a` with `build/Release/wasm_interp.lib` on MSVC.
+   On windows, link to `build/Release/wasm_interp.lib` (or `Debug`) on MSVC.
 3. Execute the runner:
    ```bash
    ./build/run_wat_module path/to/module.wasm
