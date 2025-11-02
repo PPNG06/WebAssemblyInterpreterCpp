@@ -847,16 +847,65 @@ public:
                                 HostCallback callback,
                                 void* context)
     {
-        const auto key = make_host_function_key(module, name);
+        const auto key = make_host_key(module, name);
         host_functions_[key] = HostFunctionRecord{type, std::move(callback), context};
+    }
+
+    void register_host_memory(const std::string& module,
+                              const std::string& name,
+                              const MemoryType& type,
+                              std::vector<uint8_t> data)
+    {
+        const auto key = make_host_key(module, name);
+        host_memories_[key] = HostMemoryRecord{type, std::move(data)};
+    }
+
+    void register_host_table(const std::string& module,
+                             const std::string& name,
+                             const TableType& type,
+                             std::vector<Value> elements)
+    {
+        const auto key = make_host_key(module, name);
+        host_tables_[key] = HostTableRecord{type, std::move(elements)};
+    }
+
+    void register_host_global(const std::string& module,
+                              const std::string& name,
+                              const GlobalType& type,
+                              Value value)
+    {
+        if (value.type != type.value_type)
+        {
+            throw std::runtime_error("Host global value type mismatch for import: " + module + "." + name);
+        }
+        const auto key = make_host_key(module, name);
+        host_globals_[key] = HostGlobalRecord{type, value};
     }
 
 private:
     struct HostFunctionRecord
     {
-        FunctionType signature;
-        HostCallback callback;
-        void* context{nullptr};
+       FunctionType signature;
+       HostCallback callback;
+       void* context{nullptr};
+    };
+
+    struct HostMemoryRecord
+    {
+        MemoryType type;
+        std::vector<uint8_t> data;
+    };
+
+    struct HostTableRecord
+    {
+        TableType type;
+        std::vector<Value> elements;
+    };
+
+    struct HostGlobalRecord
+    {
+        GlobalType type;
+        Value value;
     };
 
     static uint32_t require_non_negative(int32_t value, const char* what)
@@ -985,7 +1034,7 @@ private:
             nullptr);
     }
 
-    static std::string make_host_function_key(const std::string& module, const std::string& name)
+    static std::string make_host_key(const std::string& module, const std::string& name)
     {
         return module + '\0' + name;
     }
@@ -1005,11 +1054,15 @@ private:
             case ExternalKind::Function:
                 resolve_function_import(import);
                 break;
-            case ExternalKind::Table:
             case ExternalKind::Memory:
+                resolve_memory_import(import);
+                break;
+            case ExternalKind::Table:
+                resolve_table_import(import);
+                break;
             case ExternalKind::Global:
-                throw std::runtime_error("Import kind not yet supported for module: " + import.module +
-                                         "." + import.name);
+                resolve_global_import(import);
+                break;
             default:
                 throw std::runtime_error("Unknown import kind");
             }
@@ -1022,7 +1075,7 @@ private:
         {
             throw std::runtime_error("Imported function references invalid type index");
         }
-        const auto key = make_host_function_key(import.module, import.name);
+        const auto key = make_host_key(import.module, import.name);
         auto it = host_functions_.find(key);
         if (it == host_functions_.end())
         {
@@ -1044,6 +1097,130 @@ private:
         instance.host = it->second.callback;
         instance.host_context = it->second.context;
         functions_.push_back(std::move(instance));
+    }
+
+    void resolve_memory_import(const Import& import)
+    {
+        const auto key = make_host_key(import.module, import.name);
+        auto it = host_memories_.find(key);
+        if (it == host_memories_.end())
+        {
+            throw std::runtime_error("Missing host memory import: " + import.module + "." + import.name);
+        }
+
+        const auto& record = it->second;
+        if (record.type.limits.min != import.memory_type.limits.min || record.type.limits.max != import.memory_type.limits.max)
+        {
+            throw std::runtime_error("Host memory limits mismatch for import: " + import.module + "." + import.name);
+        }
+
+        MemoryInstance instance(import.memory_type);
+        const uint64_t min_bytes = static_cast<uint64_t>(import.memory_type.limits.min) * kWasmPageSize;
+
+        if (!record.data.empty())
+        {
+            if (record.data.size() % kWasmPageSize != 0)
+            {
+                throw std::runtime_error("Host memory import size must be a multiple of the WebAssembly page size");
+            }
+            if (record.data.size() < min_bytes)
+            {
+                throw std::runtime_error("Host memory import smaller than declared minimum pages for import: " +
+                                         import.module + "." + import.name);
+            }
+            if (import.memory_type.limits.max)
+            {
+                const uint64_t record_pages = record.data.size() / kWasmPageSize;
+                if (record_pages > *import.memory_type.limits.max)
+                {
+                    throw std::runtime_error("Host memory import exceeds declared maximum pages for import: " +
+                                             import.module + "." + import.name);
+                }
+            }
+            instance.data = record.data;
+        }
+        else if (instance.data.size() < min_bytes)
+        {
+            instance.data.resize(static_cast<size_t>(min_bytes), 0);
+        }
+
+        memories_.push_back(std::move(instance));
+    }
+
+    void resolve_table_import(const Import& import)
+    {
+        const auto key = make_host_key(import.module, import.name);
+        auto it = host_tables_.find(key);
+        if (it == host_tables_.end())
+        {
+            throw std::runtime_error("Missing host table import: " + import.module + "." + import.name);
+        }
+
+        const auto& record = it->second;
+        if (record.type.element_type != import.table_type.element_type ||
+            record.type.limits.min != import.table_type.limits.min ||
+            record.type.limits.max != import.table_type.limits.max)
+        {
+            throw std::runtime_error("Host table type mismatch for import: " + import.module + "." + import.name);
+        }
+
+        TableInstance instance;
+        instance.type = import.table_type;
+        instance.value_type = table_value_type(import.table_type);
+        const uint32_t min = import.table_type.limits.min;
+
+        instance.elements.assign(min, make_null_reference(instance.value_type));
+
+        if (!record.elements.empty())
+        {
+            if (record.elements.size() < min)
+            {
+                throw std::runtime_error("Host table import provides fewer elements than minimum for import: " +
+                                         import.module + "." + import.name);
+            }
+            if (import.table_type.limits.max && record.elements.size() > *import.table_type.limits.max)
+            {
+                throw std::runtime_error("Host table import exceeds maximum entries for import: " + import.module +
+                                         "." + import.name);
+            }
+            for (const auto& element : record.elements)
+            {
+                if (element.type != instance.value_type)
+                {
+                    throw std::runtime_error("Host table element type mismatch for import: " + import.module + "." +
+                                             import.name);
+                }
+            }
+            instance.elements = record.elements;
+        }
+
+        tables_.push_back(std::move(instance));
+    }
+
+    void resolve_global_import(const Import& import)
+    {
+        const auto key = make_host_key(import.module, import.name);
+        auto it = host_globals_.find(key);
+        if (it == host_globals_.end())
+        {
+            throw std::runtime_error("Missing host global import: " + import.module + "." + import.name);
+        }
+
+        const auto& record = it->second;
+        if (record.type.value_type != import.global_type.value_type ||
+            record.type.is_mutable != import.global_type.is_mutable)
+        {
+            throw std::runtime_error("Host global type mismatch for import: " + import.module + "." + import.name);
+        }
+        if (record.value.type != import.global_type.value_type)
+        {
+            throw std::runtime_error("Host global value type mismatch for import: " + import.module + "." +
+                                     import.name);
+        }
+        GlobalInstance instance;
+        instance.type = import.global_type;
+        instance.value = record.value;
+        globals_.push_back(std::move(instance));
     }
 
     void instantiate()
@@ -1090,8 +1267,8 @@ private:
 
     void instantiate_globals()
     {
-        globals_.clear();
-        globals_.reserve(module_.globals.size());
+        const size_t import_count = globals_.size();
+        globals_.reserve(import_count + module_.globals.size());
         for (const auto& global : module_.globals)
         {
             GlobalInstance instance;
@@ -1103,8 +1280,8 @@ private:
 
     void instantiate_memories()
     {
-        memories_.clear();
-        memories_.reserve(module_.memories.size());
+        const size_t import_count = memories_.size();
+        memories_.reserve(import_count + module_.memories.size());
         for (const auto& memory : module_.memories)
         {
             memories_.emplace_back(memory);
@@ -1113,8 +1290,8 @@ private:
 
     void instantiate_tables()
     {
-        tables_.clear();
-        tables_.reserve(module_.tables.size());
+        const size_t import_count = tables_.size();
+        tables_.reserve(import_count + module_.tables.size());
         for (const auto& table : module_.tables)
         {
             TableInstance instance;
@@ -2911,6 +3088,41 @@ private:
                 push(Value::make<double>(float_value));
                 break;
             }
+            case 0xC0: // i32.extend8_s
+            {
+                auto value = pop_i32(stack);
+                auto extended = static_cast<int32_t>(static_cast<int8_t>(value));
+                push(Value::make<int32_t>(extended));
+                break;
+            }
+            case 0xC1: // i32.extend16_s
+            {
+                auto value = pop_i32(stack);
+                auto extended = static_cast<int32_t>(static_cast<int16_t>(value));
+                push(Value::make<int32_t>(extended));
+                break;
+            }
+            case 0xC2: // i64.extend8_s
+            {
+                auto value = pop_i64(stack);
+                auto extended = static_cast<int64_t>(static_cast<int8_t>(value));
+                push(Value::make<int64_t>(extended));
+                break;
+            }
+            case 0xC3: // i64.extend16_s
+            {
+                auto value = pop_i64(stack);
+                auto extended = static_cast<int64_t>(static_cast<int16_t>(value));
+                push(Value::make<int64_t>(extended));
+                break;
+            }
+            case 0xC4: // i64.extend32_s
+            {
+                auto value = pop_i64(stack);
+                auto extended = static_cast<int64_t>(static_cast<int32_t>(value));
+                push(Value::make<int64_t>(extended));
+                break;
+            }
             case 0xFC: // prefixed instructions
             {
                 auto sat_opcode = reader.read_varuint32();
@@ -3357,6 +3569,9 @@ private:
     std::vector<DataSegmentInstance> data_segments_;
     std::unordered_map<std::string, std::pair<ExternalKind, uint32_t>> export_table_;
     std::unordered_map<std::string, HostFunctionRecord> host_functions_;
+    std::unordered_map<std::string, HostMemoryRecord> host_memories_;
+    std::unordered_map<std::string, HostTableRecord> host_tables_;
+    std::unordered_map<std::string, HostGlobalRecord> host_globals_;
     Module module_;
 };
 
@@ -3411,6 +3626,30 @@ void Interpreter::register_host_function(const std::string& module,
             return cb(args);
         },
         nullptr);
+}
+
+void Interpreter::register_host_memory(const std::string& module,
+                                       const std::string& name,
+                                       MemoryType type,
+                                       std::vector<uint8_t> data)
+{
+    impl_->register_host_memory(module, name, type, std::move(data));
+}
+
+void Interpreter::register_host_table(const std::string& module,
+                                      const std::string& name,
+                                      TableType type,
+                                      std::vector<Value> elements)
+{
+    impl_->register_host_table(module, name, type, std::move(elements));
+}
+
+void Interpreter::register_host_global(const std::string& module,
+                                       const std::string& name,
+                                       GlobalType type,
+                                       Value value)
+{
+    impl_->register_host_global(module, name, type, std::move(value));
 }
 
 std::vector<uint8_t> read_file(const std::string& path)

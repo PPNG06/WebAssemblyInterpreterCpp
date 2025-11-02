@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "wasm/types.hpp"
+#include "wasm/module.hpp"
 
 namespace wasm
 {
@@ -56,6 +57,21 @@ public:
                                 std::vector<ValueType> params,
                                 std::vector<ValueType> results,
                                 HostFunction callback);
+
+    void register_host_memory(const std::string& module,
+                              const std::string& name,
+                              MemoryType type,
+                              std::vector<uint8_t> data = {});
+
+    void register_host_table(const std::string& module,
+                             const std::string& name,
+                             TableType type,
+                             std::vector<Value> elements = {});
+
+    void register_host_global(const std::string& module,
+                              const std::string& name,
+                              GlobalType type,
+                              Value value);
 
 private:
     struct Impl;

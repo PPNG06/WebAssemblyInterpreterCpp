@@ -70,8 +70,7 @@ You can also invoke the harness directly:
 ```bat
 build\Release\wasm_interp_tests.exe 05_test_complex multi_call
 ```
-
-## Running a Custom `.wat` Module
+## Running a `.wat` (or its `.wasm`) Module
 
 1. Assemble the module:
    ```bat

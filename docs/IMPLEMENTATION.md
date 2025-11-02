@@ -17,9 +17,12 @@ features are added.
   memory and table initialisers, and executes bytecode with a classic operand
   stack machine. Control-flow is modelled with a stack of `ControlFrame`s that
   tracks block signatures and jump destinations.
-- **Host interface** – Function imports are resolved against a registry of host
-  callbacks keyed by `(module, name)`. Both builtin WASI shims and user
-  callbacks are expressed in terms of `wasm::Value` parameters and results.
+- **Host interface** – Imports resolve against registries keyed by
+  `(module, name)`. Functions are backed by host callbacks; linear memories,
+  tables, and globals can also be supplied from the embedder so modules that
+  import them instantiate successfully. The builtin WASI shims cover stdio,
+  args/env, clocks, randomness, and a read-only filesystem rooted at the
+  process working directory.
 - **Testing harness** – `tests/cpp/test_main.cpp` assembles the staged `.wat`
   fixtures to `.wasm` during the build (via the `generate_wasm` target) and runs
   each exported scenario, checking observable
@@ -49,8 +52,9 @@ the progression of `tests/wat/*`. Supported surface area includes:
     byte count to the supplied pointer, and returns a WASI errno (0 on success).
   - `wasi_snapshot_preview1.proc_exit` reports termination as a trap so callers
     can observe the exit status.
-- A convenience API `Interpreter::register_host_function` to add additional
-  host callbacks from user code when embedded elsewhere.
+- Convenience APIs (`register_host_function`, `register_host_memory`,
+  `register_host_table`, `register_host_global`) let embedders preload the
+  resources that modules import.
 - Post-MVP execution covering the subset exercised by
   `tests/wat/08_test_post_mvp.wat`: multi-value returns, reference types
   (`ref.null`, `ref.func`, `ref.is_null`), externref/funcref tables (including

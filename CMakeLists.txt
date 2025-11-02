@@ -38,6 +38,7 @@ set(WAT_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/wat/06_test_fc.wat
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/wat/07_test_bulk_memory.wat
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/wat/08_test_post_mvp.wat
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/custom_tests/custom_imports.wat
 )
 
 set(GENERATED_WASM_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated_wasm)
@@ -278,6 +279,9 @@ set(WASM_INTERP_MODULES
         "08_test_post_mvp:_test_combined_swap_bulk"
         "08_test_post_mvp:_test_combined_bulk_pattern"
         "08_test_post_mvp:_test_combined_table_results"
+        "custom_imports:_start"
+        "custom_imports:call_table_again"
+        "custom_imports:store_global"
     )
 
     foreach(module_name IN LISTS WASM_INTERP_MODULES)

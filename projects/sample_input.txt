@@ -1,0 +1,1 @@
+This line comes from sample_input.txt and was read via WASI path_open.

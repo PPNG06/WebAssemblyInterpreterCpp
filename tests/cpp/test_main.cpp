@@ -4,6 +4,7 @@
 #include <bit>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -55,6 +56,7 @@ struct ModuleInfo
     std::string wasm;
     std::vector<TestCase> cases;
     bool sequential{false};
+    std::function<void(wasm::Interpreter&)> configure{};
 };
 
 const std::vector<ModuleInfo> kModules = {
@@ -245,6 +247,56 @@ const std::vector<ModuleInfo> kModules = {
          {"_test_combined_table_results", 3004, 0},
      },
      true},
+    {"custom_imports",
+     "custom_imports.wat",
+     "custom_imports.wasm",
+     {
+         {"_start", 0, 15},
+         {"call_table_again", 4, 30},
+         {"store_global", 8, 15},
+     },
+     true,
+     [](wasm::Interpreter& interpreter) {
+         constexpr size_t kPageSize = 64 * 1024;
+
+         wasm::MemoryType memory_type;
+         memory_type.limits.min = 1;
+         memory_type.limits.max = 1;
+         std::vector<uint8_t> memory_data(kPageSize, 0);
+         int32_t initial_value = 5;
+         std::memcpy(memory_data.data() + 4, &initial_value, sizeof(int32_t));
+         interpreter.register_host_memory("env", "memory", memory_type, std::move(memory_data));
+
+         wasm::TableType table_type;
+         table_type.element_type = wasm::RefType::FuncRef;
+         table_type.limits.min = 1;
+         table_type.limits.max = 1;
+         interpreter.register_host_table("env", "table", table_type, {wasm::Value::make_funcref(0)});
+
+         wasm::GlobalType global_type;
+         global_type.value_type = wasm::ValueType::I32;
+         global_type.is_mutable = true;
+         interpreter.register_host_global("env", "g_counter", global_type, wasm::Value::make<int32_t>(7));
+
+         interpreter.register_host_function(
+             "env",
+             "host_add",
+             {wasm::ValueType::I32, wasm::ValueType::I32},
+             {wasm::ValueType::I32},
+             [](std::span<const wasm::Value> args) -> wasm::ExecutionResult {
+                 wasm::ExecutionResult result;
+                 if (args.size() != 2)
+                 {
+                     result.trapped = true;
+                     result.trap_message = "host_add expects 2 arguments";
+                     return result;
+                 }
+                 int32_t lhs = args[0].as<int32_t>();
+                 int32_t rhs = args[1].as<int32_t>();
+                 result.values.push_back(wasm::Value::make<int32_t>(lhs + rhs));
+                 return result;
+             });
+     }},
 };
 
 const ModuleInfo* find_module(const std::string& name)
@@ -343,6 +395,10 @@ bool execute_test_case(const ModuleInfo& module,
 bool run_test_case(const ModuleInfo& module, const TestCase& test_case, const std::vector<uint8_t>& wasm_bytes)
 {
     wasm::Interpreter interpreter;
+    if (module.configure)
+    {
+        module.configure(interpreter);
+    }
     interpreter.load(wasm_bytes);
     return execute_test_case(module, test_case, interpreter);
 }
@@ -365,6 +421,10 @@ RunSummary run_module_tests(const ModuleInfo& module, const std::optional<std::s
     if (module.sequential)
     {
         wasm::Interpreter interpreter;
+        if (module.configure)
+        {
+            module.configure(interpreter);
+        }
         interpreter.load(wasm_bytes);
 
         bool found_target = !case_filter.has_value();

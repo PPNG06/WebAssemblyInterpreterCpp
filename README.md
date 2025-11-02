@@ -6,7 +6,8 @@ built alongside the interpreter—no external toolchain setup is required.
 
 - WebAssembly binary loader with full MVP section parsing.
 - Stack-based bytecode interpreter supporting multi-value returns, reference
-  types, bulk memory operators, and WASI Preview 1 shims for `fd_write`/`proc_exit`.
+  types, bulk memory operators, and a growing WASI Preview 1 shim layer
+  (stdio, args/env, clocks, random, read-only file I/O).
 - Test harness that assembles the staged `.wat` suites into `.wasm` and validates
   observable linear memory results.
 
@@ -69,7 +70,7 @@ Individual cases can be invoked directly:
 CTest mirrors the same structure, so you can run `ctest -N` to inspect target
 labels.
 
-## Running a `.wat` Module
+## Running a `.wat` (or its `.wasm`) Module
 
 1. Build `wat2wasm` (if not already done) and assemble your module:
    ```bash
@@ -105,8 +106,11 @@ if (result.trapped) {
 }
 ```
 
-Use `register_host_function` to expose host callbacks; the interpreter ships
-with `wasi_snapshot_preview1.fd_write` and `.proc_exit` pre-registered.
+Use the `register_host_*` family to preload host functionality:
+- `register_host_function` exposes callbacks, alongside the builtin
+  `wasi_snapshot_preview1` shims for stdio/exit/argv/env clocks.
+- `register_host_memory`, `register_host_table`, and `register_host_global`
+  allow supplying imported resources before loading a module.
 
 ## Repository Layout
 
