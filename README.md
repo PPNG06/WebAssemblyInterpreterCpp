@@ -115,7 +115,7 @@ configuration directory on MSVC).
    .\build\Release\run_wat_module.exe path\to\module.wasm # Visual Studio / MSVC (adjust Debug|Release)
    ```
 
-In `/projects` you can find some `.wat` files (and their `.c` equivalent if any) which this interpreter supports. If from C files, the `.wat` files have been generated with `wasm2wat` tool from `wabt` after being compiled to `.wasm` with emscripten.
+In `projects/` you can find some `.wat` files (and their `.c` equivalent if any) which this interpreter supports. If from C files, the `.wat` files have been generated with `wasm2wat` tool from `wabt` after being compiled to `.wasm` with emscripten.
 
 ## Embedding the Interpreter
 
