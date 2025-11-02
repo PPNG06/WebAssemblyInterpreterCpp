@@ -11,6 +11,8 @@ built alongside the interpreter—no external toolchain setup is required.
 - Test harness that assembles the staged `.wat` suites into `.wasm` and validates
   observable linear memory results.
 
+This project was made on a Linux environment. While it should be supported on Windows, the instructions in this file (as well as the pathnames) might need closer examination.
+
 ## Requirements
 
 - CMake ≥ 3.20
@@ -31,6 +33,18 @@ cmake --build build
 The configure step detects the lean WABT checkout under `wabt/` and wires
 `wat2wasm` into the build graph. Multi-config generators (Visual Studio, Xcode)
 require the usual `--config Debug|Release` flag on the second command.
+
+### Windows (MSVC) Quick Start
+
+```powershell
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Release
+ctest --test-dir build -C Release
+```
+
+The bundled `wat2wasm.exe` ends up under `build/wabt/Release/` (swap in your
+chosen configuration). Tests can also be driven from the Visual Studio Test
+Explorer; both approaches exercise the same CTest entries.
 
 ### Regenerating Test Fixtures
 
@@ -56,7 +70,7 @@ Use the staged harness for exhaustive coverage:
 
 ```bash
 cmake --build build --target wasm_interp_tests
-ctest --test-dir build                     # or add --config Debug for MSVC
+ctest --test-dir build                     # or add -C Release for MSVC
 ```
 
 Individual cases can be invoked directly:
@@ -77,11 +91,13 @@ labels.
    cmake --build build --target wat2wasm
    build/wabt/wat2wasm path/to/module.wat -o path/to/module.wasm
    ```
+    (For Windows the path to wat2wasm should be build/wabt/Release/wat2wasm.exe)
+
 2. Compile the example runner:
    ```bash
    g++ -std=c++20 -Iinclude examples/run_wat_module.cpp build/libwasm_interp.a -o build/run_wat_module
    ```
-   Replace `build/libwasm_interp.a` with `build/Debug/wasm_interp.lib` on MSVC.
+   Replace `build/libwasm_interp.a` with `build/Release/wasm_interp.lib` on MSVC.
 3. Execute the runner:
    ```bash
    ./build/run_wat_module path/to/module.wasm

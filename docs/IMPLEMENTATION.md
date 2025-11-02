@@ -150,6 +150,17 @@ separate WABT configuration step is required. If you already have an external
 assembler, pass `-DWAT2WASM_EXECUTABLE=/path/to/wat2wasm` or disable the bundled
 copy with `-DWASM_INTERP_USE_BUNDLED_WABT=OFF`.
 
+On Windows/Visual Studio, configure with your preferred generator and architecture,
+then pass `--config Debug|Release` to the build and test invocations:
+
+```powershell
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Debug --target generate_wasm
+ctest --test-dir build --config Debug
+```
+
+The generated `wat2wasm.exe` lives under `build/<Config>/wabt/`.
+
 Only the subset of WABT sources required to build `wat2wasm` is kept under
 `wabt/`; auxiliary tooling, documentation, and git metadata were removed so the
 vendored tree stays lightweight while preserving licensing.

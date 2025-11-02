@@ -100,7 +100,7 @@ Float wasm_fmin(Float a, Float b)
     {
         bool a_neg = std::signbit(a);
         bool b_neg = std::signbit(b);
-        return (a_neg || b_neg) ? std::copysign(Float(0), -1.0) : Float(0);
+        return (a_neg || b_neg) ? std::copysign(Float(0), Float(-1.0)) : Float(0);
     }
     return (a < b) ? a : b;
 }
@@ -116,7 +116,7 @@ Float wasm_fmax(Float a, Float b)
     {
         bool a_neg = std::signbit(a);
         bool b_neg = std::signbit(b);
-        return (a_neg && b_neg) ? std::copysign(Float(0), -1.0) : std::copysign(Float(0), 1.0);
+        return (a_neg && b_neg) ? std::copysign(Float(0), Float(-1.0)) : std::copysign(Float(0), Float(1.0));
     }
     return (a > b) ? a : b;
 }
