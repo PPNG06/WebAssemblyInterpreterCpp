@@ -115,8 +115,7 @@ configuration directory on MSVC).
    .\build\Release\run_wat_module.exe path\to\module.wasm # Visual Studio / MSVC
    ```
 
-The example invokes the exported `_start` function; modify the source
-to call other symbols.
+In `/projects` you can find some `.wat` files (and their `.c` equivalent if any) which this interpreter supports. From C files, the `.wat` files have been generated with `wasm2wat` tool from `wabt` after being compiled to `.wasm` with emscripten.
 
 ## Embedding the Interpreter
 
