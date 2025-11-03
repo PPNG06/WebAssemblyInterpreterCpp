@@ -109,7 +109,8 @@ configuration directory on MSVC).
    cmake --build build --target run_wat_module
    # Visual Studio generators: add --config Release (or Debug)
    ```
-   Note: this runner is a simple example and will surely not be enough for bigger projects. It serves as a template to facilitate embedding of this interpreter.
+   Note: this runner is a simple example and will surely not be enough for bigger projects. It serves as a template to facilitate embedding of this interpreter (more detail below).
+
 3. Execute the runner:
    ```bash
    ./build/run_wat_module path/to/module.wasm            # single-config generators
@@ -224,6 +225,7 @@ tests without touching the rest of the repository.
 - `include/` – public API headers and POD module definitions.
 - `tests/` – staged `.wat` fixtures and C++ harness.
 - `examples/` – minimal runner showing how to execute a compiled module.
+- `projects/` – simple `.wat` files successfully assembled/ran with the interpreter. Also contains C code if `.wat` is generated from `.c` (through emscripten)
 - `wabt/` – trimmed WABT subset providing `wat2wasm`.
 
 For deeper implementation details, consult `docs/IMPLEMENTATION.md`.
