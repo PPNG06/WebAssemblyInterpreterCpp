@@ -91,8 +91,7 @@ Only changed fixtures are reassembled. To build just the assembler:
 cmake --build build --target wat2wasm
 ```
 
-The executable ends up in `build/wabt/` on single-config generators (append the
-configuration directory on MSVC).
+The executable ends up in `build/wabt/` on single-config generators (`build/wabt/Release/wat2wasm.exe` or with `Debug` on MSVC).
 
 ## Running a `.wat` (or its `.wasm`) Module
 
