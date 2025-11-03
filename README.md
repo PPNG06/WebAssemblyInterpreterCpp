@@ -34,10 +34,11 @@ external assembler, or disable the bundled copy with
 cmake -S . -B build
 cmake --build build
 ```
-
-The configure step detects the lean WABT checkout under `wabt/` and wires
-`wat2wasm` into the build graph. Multi-config generators (Visual Studio, Xcode)
+Multi-config generators (Visual Studio, Xcode)
 require the usual `--config Debug|Release` flag on the second command.
+
+Note: The configure step detects the lean WABT checkout under `wabt/` and wires
+`wat2wasm` into the build graph. 
 
 Examples are built by default; disable them with
 `-DWASM_INTERP_BUILD_EXAMPLES=OFF` if you only need the library/tests.
