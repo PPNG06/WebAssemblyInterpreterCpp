@@ -20,14 +20,39 @@ features are added.
 - **Host interface** – Imports resolve against registries keyed by
   `(module, name)`. Functions are backed by host callbacks; linear memories,
   tables, and globals can also be supplied from the embedder so modules that
-  import them instantiate successfully. The builtin WASI shims cover stdio,
-  args/env, clocks, randomness, and a read-only filesystem rooted at the
-  process working directory.
+  import them instantiate successfully. The builtin WASI shim currently wires
+  up `wasi_snapshot_preview1.fd_write` and `wasi_snapshot_preview1.proc_exit`,
+  providing minimal stdout/stderr support while leaving the rest of the surface
+  to the embedding application.
 - **Testing harness** – `tests/cpp/test_main.cpp` assembles the staged `.wat`
   fixtures to `.wasm` during the build (via the `generate_wasm` target) and runs
   each exported scenario, checking observable
   state via linear memory. Extra samples live under `tests/custom_tests/` for
   integration coverage such as imported memories/tables/globals.
+
+## Instantiation & Execution Flow
+
+1. `Interpreter::load` forwards the supplied bytes to `parse_module`, producing
+   a `Module` struct that mirrors the binary sections (types, imports, codes,
+   data/element segments, exports, optional `start`, …).
+2. `Interpreter::Impl::instantiate` resets the runtime state, resolves imports
+   through the host registries, materialises local functions/globals/memories/
+   tables, then caches passive data segments so bulk-memory instructions can
+   reference them later. Element segments are applied eagerly to populate
+   funcref tables.
+3. If the module declares a `start` function, it is executed immediately via
+   `execute_function`.
+4. Every subsequent `invoke` pushes a function frame onto a control stack,
+   allocates locals, and interprets the body with a bytecode reader. Structured
+   control flow is implemented with a vector of `ControlFrame`s; branches call
+   `branch(...)` to pop values according to the target block signature,
+   adjusting the operand stack, and—if jumping to the function frame—use the
+   cached signature captured up front so the interpreter never reads past the
+   control stack.
+5. Operand values carry a lightweight `ValueOrigin` tag. This lets store-like
+   instructions disambiguate which stack entry to consume when multi-value
+   calls or loads leave additional results on the stack. The tag is also passed
+   through load operations so hosts can tell when values originate from memory.
 
 ## Implemented Feature Set
 
@@ -117,19 +142,20 @@ executes all exported entry points and validates memory side effects.
 
 ## Known Limitations & Future Work
 
-- Import kinds other than functions (memories, tables, globals) are not yet
-  implemented. Modules requiring those imports will fail during instantiation.
+- The builtin WASI surface is intentionally tiny: only `fd_write` and
+  `proc_exit` are registered out of the box. Modules that rely on args/env,
+  clocks, randomness, or filesystem calls must be paired with host callbacks
+  supplied by the embedder. `proc_exit` surfaces as a trap so hosts can decide
+  how to propagate exit codes.
 - SIMD, GC/typed function references, tail calls, and memory64 remain
   unsupported. These features are outside the current test-driven scope and will
   trap if encountered.
-- `wasi_snapshot_preview1.proc_exit` surfaces as a trap. Embedders that expect
-  silent termination should intercept that trap and translate it to their own
-  control flow.
-- Bulk table initialisation opcodes (`table.init`, `elem.drop`) are currently
-  stubbed out and will trap until the interpreter grows support for declarative
-  segments.
-- Multi-memory modules are rejected once they require imports; the executor
-  currently assumes a single linear memory when exposing `Interpreter::memory`.
+- Declarative element segments and their bulk table operators are still on the
+  backlog: `table.init` and `elem.drop` intentionally trap until that support
+  lands.
+- `Interpreter::memory()` exposes only the first linear memory. Additional
+  memories can still be imported or defined, but hosts need explicit exported
+  helpers to access them.
 
 These constraints are documented so subsequent increments can tackle them with
 clear expectations.
