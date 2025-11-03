@@ -120,6 +120,26 @@ configuration directory on MSVC).
 
 In `projects/` you can find some `.wat` files (and their `.c` equivalent if any) which this interpreter supports. If from C files, the `.wat` files have been generated with `wasm2wat` tool from `wabt` after being compiled to `.wasm` with emscripten.
 
+#### Example (Linux):
+   ```bash
+      cmake --build build --target wat2wasm
+      build/wabt/wat2wasm projects/isprime.wat -o projects/isprime.wasm #checks if argument is prime
+      cmake --build build --target run_wat_module
+      ./build/run_wat_module --arg-i32 1201 projects/isprime.wasm  #is_prime takes one i32 as argument
+
+      #Should return: 1 (1201 is prime!)
+   ```
+#### Example (Windows):
+   ```powershell
+      cmake --build build --config Release --target wat2wasm
+      .\build\wabt\Release\wat2wasm.exe projects\isprime.wat -o .\projects\isprime.wasm #checks if argument is prime
+      cmake --build build --config Release --target run_wat_module 
+      .\build\Release\run_wat_module.exe --arg-i32 1201 .\projects\isprime.wasm  #is_prime takes one i32 as argument
+
+      #Should return: 1 (1201 is prime!)
+   ```
+   Don't forget to adjust `Debug`/`Release`
+
 ## Embedding the Interpreter
 
 ### 1. Link the library

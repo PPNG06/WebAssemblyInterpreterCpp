@@ -247,33 +247,43 @@ ctest --test-dir build -L case                       # only per-case entries
 Verbose runs (`ctest -VV`) forward the harness output, making it easy to inspect
 memory checks and PASS/FAIL lines for a single scenario.
 
-### Running a Standalone `.wat` Module (assuming successful build)
+### Running a Standalone `.wat` Module
 
-When you are provided with a WebAssembly text file (e.g. `tests/wat/09_print_hello.wat`) and want
-to execute it directly with this interpreter:
+The repository ships with a convenience runner (`run_wat_module`) so you can
+execute arbitrary binaries without writing additional glue code.
 
-1. Assemble the text module into the build tree (the bundled `wat2wasm` is part of the default build). The command below reuses the `generate_wasm` target so the resulting binary lands in `build/generated_wasm/<name>.wasm`:
+1. **Build the example**  
+   The example target is enabled by default (`-DWASM_INTERP_BUILD_EXAMPLES=ON`).
+   After configuring the project, build the helper:
    ```bash
-   cmake --build build --target generate_wasm
+   cmake --build build --target run_wat_module
    ```
-   For ad-hoc files outside the `tests/wat/` list, invoke the tool directly once it has been produced:
+   On multi-config generators (Visual Studio, Xcode) append
+   `--config Debug`/`Release` as needed. The executable is written to
+   `build/run_wat_module` for single-config generators or
+   `build/<Config>/run_wat_module` otherwise.
+
+2. **Assemble your `.wat` file**  
+   If the module already lives under `tests/wat/`, the `generate_wasm` target
+   will assemble it to `build/generated_wasm/<name>.wasm`:
+   ```bash
+   cmake --build build --target generate_wasm            # add --config <cfg> as required
+   ```
+   For ad-hoc files, build the bundled assembler once and invoke it directly:
    ```bash
    cmake --build build --target wat2wasm
-   # the executable resides inside the build tree; adjust the path for multi-config generators
-   build/wabt/wat2wasm tests/wat/09_print_hello.wat -o build/generated_wasm/09_print_hello.wasm
+   build/wabt/wat2wasm path/to/custom.wat -o build/generated_wasm/custom.wasm
    ```
-   On Windows/MSVC use `build\wabt\Debug\wat2wasm.exe` (or the appropriate configuration directory).
-2. Compile the lightweight runner located at `examples/run_wat_module.cpp`, linking it against the
-   static interpreter library produced during the main build. With single-config generators that
-   library lives at `build/libwasm_interp.a`; on MSVC look for `build\Debug\wasm_interp.lib`:
-   ```bash
-   g++ -std=c++20 -Iinclude examples/run_wat_module.cpp build/libwasm_interp.a -o build/run_wat_module
-   ```
-3. Execute the runner (pass a custom path as the first argument). The helper calls the exported
-   function `_start` by default; adjust the source if you need a different entry point:
-   ```bash
-   ./build/run_wat_module build/generated_wasm/09_print_hello.wasm
-   ```
+   Replace `build/wabt/wat2wasm` with `build\<cfg>\wabt\wat2wasm.exe` on Windows
+   multi-config builds.
 
-The interpreter automatically registers WASI Preview 1 shims (`fd_write`, `proc_exit`), so modules
-that call `_start` and print to stdout behave as expected once assembled.
+3. **Run the module**  
+   Pass the assembled binary to the runner. By default it auto-detects an entry
+   point (preferring `_start` for WASI-style modules) and wires in the built-in
+   WASI shims for `fd_write`/`proc_exit`.
+   ```bash
+   ./build/run_wat_module build/generated_wasm/custom.wasm
+   ```
+   Use `--list-exports`, `--invoke <name>`, and the `--arg-*` flags to call
+   specific exports with typed arguments. See `run_wat_module --help` for the
+   full CLI surface.
