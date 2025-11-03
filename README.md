@@ -1,8 +1,7 @@
 # WebAssemblyInterpreterCpp
 
 A self-contained WebAssembly (MVP + selected post-MVP features) interpreter
-written in C++20. The project bundles a lean slice of WABT so `wat2wasm` can be
-built alongside the interpreter—no external toolchain setup is required.
+written in C++20. The project bundles the `wat2wasm` tool from `wabt` built alongside the interpreter. No external toolchain setup is therefore required since building `wat2wasm` is integrated within this project.
 
 - WebAssembly binary loader with full MVP section parsing.
 - Stack-based bytecode interpreter supporting multi-value returns, reference
