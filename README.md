@@ -1,4 +1,4 @@
-# WasmInterpCpp
+# WebAssemblyInterpreterCpp
 
 A self-contained WebAssembly (MVP + selected post-MVP features) interpreter
 written in C++20. The project bundles a lean slice of WABT so `wat2wasm` can be
