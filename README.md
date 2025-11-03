@@ -109,7 +109,7 @@ configuration directory on MSVC).
    cmake --build build --target run_wat_module
    # Visual Studio generators: add --config Release (or Debug)
    ```
-   Note: this runner is a simple example and might not be enough for bigger projects. It serves as a template to facilitate embedding of this interpreter.
+   Note: this runner is a simple example and will surely not be enough for bigger projects. It serves as a template to facilitate embedding of this interpreter.
 3. Execute the runner:
    ```bash
    ./build/run_wat_module path/to/module.wasm            # single-config generators
