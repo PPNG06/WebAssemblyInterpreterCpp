@@ -97,7 +97,7 @@ The executable ends up in `build/wabt/` on single-config generators (`build/wabt
 
 1. Build `wat2wasm` (if not already done) and assemble your module:
    ```bash
-   cmake --build build --target wat2wasm
+   cmake --build build --target wat2wasm    # Visual Studio generators: add --config Release (or Debug)
    build/wabt/wat2wasm path/to/module.wat -o path/to/module.wasm
    ```
     (For Windows the path to wat2wasm should be `build/wabt/Release/wat2wasm.exe` (or with `Debug`))
@@ -105,8 +105,7 @@ The executable ends up in `build/wabt/` on single-config generators (`build/wabt
 2. Build the example runner via CMake (already part of the default build when
    `WASM_INTERP_BUILD_EXAMPLES=ON`):
    ```bash
-   cmake --build build --target run_wat_module
-   # Visual Studio generators: add --config Release (or Debug)
+   cmake --build build --target run_wat_module    # Visual Studio generators: add --config Release (or Debug)
    ```
    Note: this runner is a simple example and will surely not be enough for bigger projects. It serves as a template to facilitate embedding of this interpreter (more detail below).
 
