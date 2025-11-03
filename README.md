@@ -119,28 +119,103 @@ In `/projects` you can find some `.wat` files (and their `.c` equivalent if any)
 
 ## Embedding the Interpreter
 
-Link against the static library and drive the public API:
+### 1. Link the library
+
+`wasm_interp` is a static CMake target. Pull the project into your workspace (as
+a subdirectory, submodule, or via FetchContent) and link it to your app:
+
+```cmake
+add_subdirectory(external/WasmInterpCpp)    # adjust path as needed
+target_link_libraries(my_app PRIVATE wasm_interp)
+```
+
+The public headers live under `include/`, so `#include "wasm/interpreter.hpp"`
+is all you need in client code.
+
+### 2. Load and run a module
 
 ```cpp
 #include "wasm/interpreter.hpp"
 
-std::vector<uint8_t> bytes = wasm::read_file("module.wasm");
-wasm::Interpreter interp;
-interp.load(bytes);
-auto result = interp.invoke("_start");
-if (result.trapped) {
-    // handle trap
+int main()
+{
+    const auto bytes = wasm::read_file("module.wasm");
+
+    wasm::Interpreter interp;
+    interp.load(bytes);              // parse + instantiate
+
+    auto result = interp.invoke("_start");
+    if (result.trapped) {
+        std::cerr << "trap: " << result.trap_message << "\n";
+        return 1;
+    }
+
+    for (const auto& value : result.values) {
+        // consume returned values; Value exposes helpers like as<int32_t>()
+    }
 }
 ```
 
-Use the `register_host_*` family to preload host functionality before calling
-`load`:
-- `register_host_function` exposes callbacks, alongside the builtin
-  `wasi_snapshot_preview1` shims for stdio/exit/argv/env, clocks, and random
-  number generation.
-- `register_host_memory`, `register_host_table`, and `register_host_global`
-  supply imported resources so modules with external memories/tables/globals
-  instantiate successfully.
+`Interpreter::invoke` accepts arbitrary export names and parameters; pass values
+in `std::span<const Value>` order matching the function signature. Reuse the
+same interpreter instance to call multiple exports—the module stays loaded until
+the object is destroyed.
+
+### 3. Provide host imports
+
+Register imports before calling `load`. The interpreter ships with
+`wasi_snapshot_preview1` shims for common WASI syscalls, and you can expose your
+own host bindings with the `register_host_*` helpers:
+
+```cpp
+wasm::Interpreter interp;
+
+interp.register_host_function(
+    "env",                 // module name expected by the Wasm file
+    "print_i32",           // import name
+    {{wasm::ValueType::I32}, {}},  // params, results
+    [](std::span<const wasm::Value> args) -> wasm::ExecutionResult {
+        std::cout << args[0].as<int32_t>() << "\n";
+        return {};
+    });
+
+interp.register_host_memory("env", "memory", {/* MemoryType */}, initial_bytes);
+interp.register_host_global("env", "tick", {/* GlobalType */}, wasm::Value::make<int32_t>(0));
+
+interp.load(bytes);
+```
+
+Use the matching `register_host_memory`, `register_host_table`, and
+`register_host_global` calls when your module imports those resources. The
+helper functions perform validation so mismatched limits or element types fail
+fast during instantiation.
+
+### 4. Inspect memory (optional)
+
+Call `Interpreter::memory()` to get a mutable view of the first exported memory:
+
+```cpp
+auto mem = interp.memory();
+if (mem.data) {
+    std::span<uint8_t> bytes(mem.data, mem.size);
+    // read / write linear memory
+}
+```
+
+This is useful for exchanging bulk data with the guest. Grow memory inside Wasm
+using the `memory.grow` instruction or from the host through exported functions.
+
+### 5. Error handling & diagnostics
+
+- `ExecutionResult::trapped` is set when the guest triggered a trap (for
+  example via `unreachable`, out-of-bounds memory, or an imported function
+  returning a trapped state). The interpreter propagates a descriptive message.
+- Structural errors (invalid module, missing imports, type mismatches) throw
+  `std::runtime_error` from `load`—wrap instantiation in a try/catch if you need
+  to surface these gracefully.
+
+With these pieces you can embed the interpreter into CLI tools, servers, or unit
+tests without touching the rest of the repository.
 
 ## Repository Layout
 
